@@ -9,9 +9,16 @@ import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
 @EnableWebSocket
 @Configuration
 public class ChatSocket extends TextWebSocketHandler implements WebSocketConfigurer {
+
+    List<WebSocketSession> userList = new ArrayList<>();
+
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry webSocketHandlerRegistry) {
         webSocketHandlerRegistry.addHandler(this, "/chat")
@@ -20,16 +27,22 @@ public class ChatSocket extends TextWebSocketHandler implements WebSocketConfigu
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        super.afterConnectionEstablished(session);
+        userList.add(session);
     }
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        super.handleTextMessage(session, message);
+        userList.forEach(s -> {
+                    try {
+                        s.sendMessage(message);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                });
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
-        super.afterConnectionClosed(session, status);
+       userList.remove(session);
     }
 }
