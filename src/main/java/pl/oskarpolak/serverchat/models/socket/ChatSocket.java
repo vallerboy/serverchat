@@ -31,8 +31,6 @@ public class ChatSocket extends TextWebSocketHandler implements WebSocketConfigu
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        session.sendMessage(new TextMessage("Hejo!"));
-        session.sendMessage(new TextMessage("Twoja pierwsza wiadomość zostanie Twoim nickiem!"));
         userList.put(session.getId(), new UserModel(session));
     }
 
@@ -48,19 +46,52 @@ public class ChatSocket extends TextWebSocketHandler implements WebSocketConfigu
 
         switch (factoryCreated.getMessageType()){
             case SEND_MESSAGE: {
-                //todo obórka nicku
+                //todo nick
+                // Pod message znajduje sie normalna w swiecie wiadomosc
                 factoryNewMessage = new MessageFactory();
-                factoryNewMessage.setMessage(message.getPayload());
+                factoryNewMessage.setMessage(factoryCreated.getMessage());
                 factoryNewMessage.setMessageType(MessageFactory.MessageType.SEND_MESSAGE);
                 sendMessageToAll(factoryNewMessage);
+                break;
+            }
+            case SET_NICK: {
+                // Pod message znajduje sie nick uzytkownika
+                factoryNewMessage  = new MessageFactory();
+                if(!isNickFree(factoryCreated.getMessage())){
+                     factoryNewMessage.setMessageType(MessageFactory.MessageType.NICK_NOT_FREE);
+                     factoryNewMessage.setMessage("Nick nie jest wolny przyjacielu!");
+                     sendMessageToUser(userModel, factoryNewMessage);
+                     return;
+                }
+                userModel.setNick(factoryCreated.getMessage());
+                factoryNewMessage.setMessageType(MessageFactory.MessageType.SEND_MESSAGE);
+                factoryNewMessage.setMessage("Ustawiłeś swój nick");
+                sendMessageToUser(userModel, factoryCreated);
                 break;
             }
         }
 
     }
 
+    private boolean isNickFree(String nick){
+        for (UserModel userModel : userList.values()) {
+            if(userModel.getNick() != null && nick.equals(userModel.getNick())) {
+                 return false;
+            }
+        }
+        return true;
+    }
+
     private String convertFactoryToString(MessageFactory factory){
       return MessageFactory.GSON.toJson(factory);
+    }
+
+    public void sendMessageToUser(UserModel userModel, MessageFactory factory) {
+        try {
+            userModel.getSession().sendMessage(new TextMessage(convertFactoryToString(factory)));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public void sendMessageToAll(MessageFactory factory){
