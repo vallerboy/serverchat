@@ -1,5 +1,6 @@
 package pl.oskarpolak.serverchat.models.socket;
 
+import org.springframework.boot.autoconfigure.security.SecurityProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -40,6 +41,13 @@ public class ChatSocket extends TextWebSocketHandler implements WebSocketConfigu
 
 
         if(userModel.getNick() == null){
+
+            for(UserModel localNick : userList.values()){
+                if(localNick.getNick() != null && localNick.getNick().equals(message.getPayload())){
+                    userModel.getSession().sendMessage(new TextMessage("Nick zajęty"));
+                    return;
+                }
+            }
             userModel.setNick(message.getPayload());
             userModel.getSession().sendMessage(
                     new TextMessage("Ustawiliśmy Twój nick!")
@@ -49,7 +57,7 @@ public class ChatSocket extends TextWebSocketHandler implements WebSocketConfigu
 
         userList.values().forEach(s -> {
                     try {
-                        TextMessage newMessage = new TextMessage(s.getNick() + ": " + message.getPayload());
+                        TextMessage newMessage = new TextMessage(userModel.getNick() + ": " + message.getPayload());
                         s.getSession().sendMessage(newMessage);
                     } catch (IOException e) {
                         e.printStackTrace();
