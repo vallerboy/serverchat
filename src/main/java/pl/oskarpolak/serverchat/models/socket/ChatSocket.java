@@ -11,14 +11,13 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import pl.oskarpolak.serverchat.models.UserModel;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 @EnableWebSocket
 @Configuration
 public class ChatSocket extends TextWebSocketHandler implements WebSocketConfigurer {
 
-    List<UserModel> userList = new ArrayList<>();
+    Map<String, UserModel> userList = Collections.synchronizedMap(new HashMap<>());
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry webSocketHandlerRegistry) {
@@ -30,16 +29,15 @@ public class ChatSocket extends TextWebSocketHandler implements WebSocketConfigu
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         session.sendMessage(new TextMessage("Hejo!"));
         session.sendMessage(new TextMessage("Twoja pierwsza wiadomość zostanie Twoim nickiem!"));
-        userList.add(new UserModel(session));
+        userList.put(session.getId(), new UserModel(session));
     }
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
 
-        UserModel userModel = userList.stream()
-                .filter(s -> s.getSession().equals(session))
-                .findAny()
-                .get();
+        UserModel userModel = userList.get(session.getId());
+
+
 
         if(userModel.getNick() == null){
             userModel.setNick(message.getPayload());
@@ -49,7 +47,7 @@ public class ChatSocket extends TextWebSocketHandler implements WebSocketConfigu
             return;
         }
 
-        userList.forEach(s -> {
+        userList.values().forEach(s -> {
                     try {
                         TextMessage newMessage = new TextMessage(s.getNick() + ": " + message.getPayload());
                         s.getSession().sendMessage(newMessage);
@@ -61,9 +59,6 @@ public class ChatSocket extends TextWebSocketHandler implements WebSocketConfigu
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
-       userList.remove(userList.stream()
-               .filter(s -> s.getSession().equals(session))
-               .findAny()
-               .get());
+       userList.remove(session.getId());
     }
 }
