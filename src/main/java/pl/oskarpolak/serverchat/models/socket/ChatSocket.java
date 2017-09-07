@@ -3,6 +3,7 @@ package pl.oskarpolak.serverchat.models.socket;
 import com.google.gson.reflect.TypeToken;
 import org.springframework.boot.autoconfigure.security.SecurityProperties;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.method.annotation.ModelFactory;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
@@ -49,7 +50,7 @@ public class ChatSocket extends TextWebSocketHandler implements WebSocketConfigu
                 //todo nick
                 // Pod message znajduje sie normalna w swiecie wiadomosc
                 factoryNewMessage = new MessageFactory();
-                factoryNewMessage.setMessage(factoryCreated.getMessage());
+                factoryNewMessage.setMessage(userModel.getNick() + ": " + factoryCreated.getMessage());
                 factoryNewMessage.setMessageType(MessageFactory.MessageType.SEND_MESSAGE);
                 sendMessageToAll(factoryNewMessage);
                 break;
@@ -67,6 +68,7 @@ public class ChatSocket extends TextWebSocketHandler implements WebSocketConfigu
                 factoryNewMessage.setMessageType(MessageFactory.MessageType.SEND_MESSAGE);
                 factoryNewMessage.setMessage("Ustawiłeś swój nick");
                 sendMessageToUser(userModel, factoryCreated);
+                sendJoinPacket(userModel.getNick(), userModel);
                 break;
             }
         }
@@ -84,6 +86,33 @@ public class ChatSocket extends TextWebSocketHandler implements WebSocketConfigu
 
     private String convertFactoryToString(MessageFactory factory){
       return MessageFactory.GSON.toJson(factory);
+    }
+
+    public void sendMessageToAllWithOutMe(UserModel model, MessageFactory factory){
+        for(UserModel user : userList.values()){
+            try {
+                if(user.getSession().getId().equals(model.getSession().getId())){
+                    continue;
+                }
+                user.getSession().sendMessage(new TextMessage(convertFactoryToString(factory)));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void sendJoinPacket(String nick, UserModel model){
+        MessageFactory messageFactory = new MessageFactory();
+        messageFactory.setMessageType(MessageFactory.MessageType.USER_JOIN);
+        messageFactory.setMessage(nick);
+        sendMessageToAllWithOutMe(model, messageFactory);
+    }
+
+    private void sendLeftPacket(String nick, UserModel model){
+        MessageFactory messageFactory = new MessageFactory();
+        messageFactory.setMessageType(MessageFactory.MessageType.USER_LEFT);
+        messageFactory.setMessage(nick);
+        sendMessageToAllWithOutMe(model, messageFactory);
     }
 
     public void sendMessageToUser(UserModel userModel, MessageFactory factory) {
@@ -107,6 +136,8 @@ public class ChatSocket extends TextWebSocketHandler implements WebSocketConfigu
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
-       userList.remove(session.getId());
+        UserModel userModel = userList.get(session.getId());
+        sendLeftPacket(userModel.getNick(), userModel);
+        userList.remove(session.getId());
     }
 }
