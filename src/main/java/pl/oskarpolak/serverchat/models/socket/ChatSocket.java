@@ -51,7 +51,8 @@ public class ChatSocket extends TextWebSocketHandler implements WebSocketConfigu
 
         userList.forEach(s -> {
                     try {
-                        s.getSession().sendMessage(message);
+                        TextMessage newMessage = new TextMessage(s.getNick() + ": " + message.getPayload());
+                        s.getSession().sendMessage(newMessage);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
