@@ -1,0 +1,1 @@
+package pl.oskarpolak.serverchat.models;
