@@ -64,11 +64,11 @@ public class ChatSocket extends TextWebSocketHandler implements WebSocketConfigu
                      sendMessageToUser(userModel, factoryNewMessage);
                      return;
                 }
+                sendJoinPacket(factoryCreated.getMessage(), userModel);
                 userModel.setNick(factoryCreated.getMessage());
                 factoryNewMessage.setMessageType(MessageFactory.MessageType.SEND_MESSAGE);
                 factoryNewMessage.setMessage("Ustawiłeś swój nick");
-                sendMessageToUser(userModel, factoryCreated);
-                sendJoinPacket(userModel.getNick(), userModel);
+                sendMessageToUser(userModel, factoryNewMessage);
                 break;
             }
         }
@@ -105,14 +105,14 @@ public class ChatSocket extends TextWebSocketHandler implements WebSocketConfigu
         MessageFactory messageFactory = new MessageFactory();
         messageFactory.setMessageType(MessageFactory.MessageType.USER_JOIN);
         messageFactory.setMessage(nick);
-        sendMessageToAllWithOutMe(model, messageFactory);
+        sendMessageToAll(messageFactory);
     }
 
     private void sendLeftPacket(String nick, UserModel model){
         MessageFactory messageFactory = new MessageFactory();
         messageFactory.setMessageType(MessageFactory.MessageType.USER_LEFT);
         messageFactory.setMessage(nick);
-        sendMessageToAllWithOutMe(model, messageFactory);
+        sendMessageToAll(messageFactory);
     }
 
     public void sendMessageToUser(UserModel userModel, MessageFactory factory) {
