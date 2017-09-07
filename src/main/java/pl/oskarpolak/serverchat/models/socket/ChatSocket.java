@@ -1,5 +1,6 @@
 package pl.oskarpolak.serverchat.models.socket;
 
+import com.google.gson.reflect.TypeToken;
 import org.springframework.boot.autoconfigure.security.SecurityProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.CloseStatus;
@@ -9,9 +10,11 @@ import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
+import pl.oskarpolak.serverchat.models.MessageFactory;
 import pl.oskarpolak.serverchat.models.UserModel;
 
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.util.*;
 
 @EnableWebSocket
@@ -38,35 +41,38 @@ public class ChatSocket extends TextWebSocketHandler implements WebSocketConfigu
 
         UserModel userModel = userList.get(session.getId());
 
+        Type factory = new TypeToken<MessageFactory>() {}.getType();
+        MessageFactory factoryCreated = MessageFactory.GSON.fromJson(message.getPayload(), factory);
 
+        MessageFactory factoryNewMessage;
 
-
-
-
-        if(userModel.getNick() == null){
-
-            for(UserModel localNick : userList.values()){
-                if(localNick.getNick() != null && localNick.getNick().equals(message.getPayload()) && message.getPayload().length() <= 15){
-                    userModel.getSession().sendMessage(new TextMessage("Nick zajęty lub niepoprawny"));
-                    return;
-                }
+        switch (factoryCreated.getMessageType()){
+            case SEND_MESSAGE: {
+                //todo obórka nicku
+                factoryNewMessage = new MessageFactory();
+                factoryNewMessage.setMessage(message.getPayload());
+                factoryNewMessage.setMessageType(MessageFactory.MessageType.SEND_MESSAGE);
+                sendMessageToAll(factoryNewMessage);
+                break;
             }
-            userModel.setNick(message.getPayload());
-            userModel.getSession().sendMessage(
-                    new TextMessage("Ustawiliśmy Twój nick!")
-            );
-            return;
         }
 
-        userList.values().forEach(s -> {
-                    try {
-                        TextMessage newMessage = new TextMessage(userModel.getNick() + ": " + message.getPayload());
-                        s.getSession().sendMessage(newMessage);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                });
     }
+
+    private String convertFactoryToString(MessageFactory factory){
+      return MessageFactory.GSON.toJson(factory);
+    }
+
+    public void sendMessageToAll(MessageFactory factory){
+        for(UserModel user : userList.values()){
+            try {
+                user.getSession().sendMessage(new TextMessage(convertFactoryToString(factory)));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
