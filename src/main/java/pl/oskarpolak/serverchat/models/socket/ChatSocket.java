@@ -40,11 +40,14 @@ public class ChatSocket extends TextWebSocketHandler implements WebSocketConfigu
 
 
 
+
+
+
         if(userModel.getNick() == null){
 
             for(UserModel localNick : userList.values()){
-                if(localNick.getNick() != null && localNick.getNick().equals(message.getPayload())){
-                    userModel.getSession().sendMessage(new TextMessage("Nick zajęty"));
+                if(localNick.getNick() != null && localNick.getNick().equals(message.getPayload()) && message.getPayload().length() <= 15){
+                    userModel.getSession().sendMessage(new TextMessage("Nick zajęty lub niepoprawny"));
                     return;
                 }
             }
