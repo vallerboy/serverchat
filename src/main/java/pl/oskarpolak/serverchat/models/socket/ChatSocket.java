@@ -8,6 +8,7 @@ import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
+import pl.oskarpolak.serverchat.models.UserModel;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -17,7 +18,7 @@ import java.util.List;
 @Configuration
 public class ChatSocket extends TextWebSocketHandler implements WebSocketConfigurer {
 
-    List<WebSocketSession> userList = new ArrayList<>();
+    List<UserModel> userList = new ArrayList<>();
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry webSocketHandlerRegistry) {
@@ -27,14 +28,16 @@ public class ChatSocket extends TextWebSocketHandler implements WebSocketConfigu
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        userList.add(session);
+        userList.add(new UserModel(session));
     }
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+
+
         userList.forEach(s -> {
                     try {
-                        s.sendMessage(message);
+                        s.getSession().sendMessage(message);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -43,6 +46,9 @@ public class ChatSocket extends TextWebSocketHandler implements WebSocketConfigu
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
-       userList.remove(session);
+       userList.remove(userList.stream()
+               .filter(s -> s.getSession().equals(session))
+               .findAny()
+               .get());
     }
 }
